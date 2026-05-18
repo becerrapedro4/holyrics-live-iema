@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Holyrics Live</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=Cormorant+SC:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:       #080806;
+    --surface:  #0f0f0d;
+    --border:   #222220;
+    --text:     #f2ede3;
+    --dim:      #5a5850;
+    --gold:     #c9a84c;
+    --gold-dim: #7a6330;
+    --live:     #6dffb3;
+    --divider:  #1e1e1c;
+  }
+
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    cursor: none;
+  }
+
+  /* ── Layout ─────────────────────────────────────── */
+  .stage {
+    height: 100vh;
+    display: grid;
+    grid-template-rows: 1fr 1px 0.55fr;
+  }
+
+  /* ── Panels ─────────────────────────────────────── */
+  .panel {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 5vh 7vw;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .panel-current {
+    background: var(--bg);
+  }
+
+  .panel-divider {
+    background: var(--border);
+  }
+
+  .panel-previous {
+    background: var(--surface);
+  }
+
+  /* ── Current slide ──────────────────────────────── */
+  .current-label {
+    position: absolute;
+    top: 20px;
+    left: 32px;
+    font-family: 'Cormorant SC', serif;
+    font-size: 10px;
+    letter-spacing: 5px;
+    color: var(--gold-dim);
+    text-transform: uppercase;
+    opacity: 0;
+    transition: opacity 1s;
+  }
+  .panel-current.live .current-label { opacity: 1; }
+
+  .current-tipo {
+    position: absolute;
+    top: 20px;
+    right: 32px;
+    font-family: 'Cormorant SC', serif;
+    font-size: 10px;
+    letter-spacing: 4px;
+    color: var(--dim);
+  }
+
+  .current-text {
+    font-size: clamp(24px, 4vw, 64px);
+    font-weight: 300;
+    line-height: 1.6;
+    text-align: center;
+    white-space: pre-wrap;
+    color: var(--text);
+    transition: opacity 0.5s ease;
+  }
+
+  .current-text.empty {
+    font-style: italic;
+    color: var(--dim);
+    font-size: clamp(16px, 2vw, 28px);
+  }
+
+  .current-cita {
+    margin-top: 28px;
+    text-align: center;
+    font-family: 'Cormorant SC', serif;
+    font-size: clamp(14px, 1.6vw, 26px);
+    font-weight: 400;
+    color: var(--gold);
+    letter-spacing: 1px;
+    min-height: 1em;
+    transition: opacity 0.4s;
+  }
+
+  /* Acento lateral — aparece cuando hay contenido */
+  .panel-current::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 15%; bottom: 15%;
+    width: 2px;
+    background: linear-gradient(to bottom, transparent, var(--gold), transparent);
+    opacity: 0;
+    transition: opacity 0.8s;
+  }
+  .panel-current.live::before { opacity: 1; }
+
+  /* ── Previous slide ─────────────────────────────── */
+  .previous-label {
+    position: absolute;
+    top: 16px;
+    left: 32px;
+    font-family: 'Cormorant SC', serif;
+    font-size: 9px;
+    letter-spacing: 4px;
+    color: var(--dim);
+    opacity: 0.5;
+  }
+
+  .previous-text {
+    font-size: clamp(16px, 2.4vw, 36px);
+    font-weight: 300;
+    font-style: italic;
+    line-height: 1.6;
+    text-align: center;
+    white-space: pre-wrap;
+    color: var(--dim);
+  }
+
+  .previous-cita {
+    margin-top: 14px;
+    text-align: center;
+    font-family: 'Cormorant SC', serif;
+    font-size: clamp(11px, 1.2vw, 18px);
+    color: var(--gold-dim);
+    min-height: 1em;
+  }
+
+  /* ── Status dot ─────────────────────────────────── */
+  .dot {
+    position: fixed;
+    top: 16px;
+    right: 20px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--dim);
+    transition: background 0.5s, box-shadow 0.5s;
+    z-index: 10;
+  }
+  .dot.live {
+    background: var(--live);
+    box-shadow: 0 0 10px var(--live), 0 0 24px rgba(109,255,179,0.25);
+  }
+
+  /* ── Fade-in animation ──────────────────────────── */
+  @keyframes appear {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .appear { animation: appear 0.5s ease forwards; }
+
+  /* ── Fullscreen hint ────────────────────────────── */
+  .hint {
+    position: fixed;
+    bottom: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: 'Cormorant SC', serif;
+    font-size: 9px;
+    letter-spacing: 3px;
+    color: var(--border);
+    transition: color 0.3s;
+    pointer-events: none;
+  }
+  body:hover .hint { color: var(--dim); }
+</style>
+</head>
+<body>
+
+<div class="dot" id="dot"></div>
+
+<div class="stage">
+
+  <!-- Slide actual -->
+  <div class="panel panel-current" id="panelCurrent">
+    <div class="current-label">En pantalla</div>
+    <div class="current-tipo" id="currentTipo"></div>
+    <div class="current-text empty" id="currentText">— sin señal —</div>
+    <div class="current-cita" id="currentCita"></div>
+  </div>
+
+  <div class="panel-divider"></div>
+
+  <!-- Slide anterior -->
+  <div class="panel panel-previous">
+    <div class="previous-label">Anterior</div>
+    <div class="previous-text" id="previousText"></div>
+    <div class="previous-cita" id="previousCita"></div>
+  </div>
+
+</div>
+
+<div class="hint">F · pantalla completa</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
+import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey:            "AIzaSyBZLD162i-JwjjdUvt2KhFyAWfvIWMLRN8",
+  authDomain:        "holyrics-live.firebaseapp.com",
+  databaseURL:       "https://holyrics-live-default-rtdb.firebaseio.com",
+  projectId:         "holyrics-live",
+  storageBucket:     "holyrics-live.firebasestorage.app",
+  messagingSenderId: "55146249266",
+  appId:             "1:55146249266:web:a1da961544c57dbde2902b"
+};
+
+const fbApp = initializeApp(firebaseConfig);
+const db    = getDatabase(fbApp);
+
+// ── Estado ────────────────────────────────────────
+let prevText = "";
+let prevCita = "";
+
+// ── Elementos ────────────────────────────────────
+const dot          = document.getElementById("dot");
+const panel        = document.getElementById("panelCurrent");
+const currentText  = document.getElementById("currentText");
+const currentCita  = document.getElementById("currentCita");
+const currentTipo  = document.getElementById("currentTipo");
+const previousText = document.getElementById("previousText");
+const previousCita = document.getElementById("previousCita");
+
+// ── Firebase listener ────────────────────────────
+onValue(ref(db, "/holyrics/live"), (snap) => {
+  const d = snap.val() || {};
+  render(
+    d.texto     || "",
+    d.tipo      || "",
+    d.versiculo || "",
+    d.cita      || "",
+    !!d.activo
+  );
+});
+
+function render(texto, tipo, versiculo, cita, activo) {
+  // Determinar display principal
+  const display     = (tipo === "BIBLE" && versiculo) ? versiculo : texto;
+  const displayCita = (tipo === "BIBLE") ? cita : "";
+
+  // Dot
+  dot.className = activo ? "dot live" : "dot";
+
+  if (!activo || !texto) {
+    // Sin señal
+    panel.classList.remove("live");
+    currentText.textContent = "— sin señal —";
+    currentText.className   = "current-text empty";
+    currentCita.textContent = "";
+    currentTipo.textContent = "";
+    return;
+  }
+
+  // ¿Cambió el texto? → mover actual a anterior
+  const currentRaw = currentText.getAttribute("data-raw") || "";
+  if (display !== currentRaw && currentRaw) {
+    prevText = currentRaw;
+    prevCita = currentCita.textContent;
+    showPrevious(prevText, prevCita);
+  }
+
+  // Actualizar actual
+  panel.classList.add("live");
+  currentText.setAttribute("data-raw", display);
+  currentText.className   = "current-text appear";
+  currentText.textContent = display;
+  currentCita.textContent = displayCita;
+  currentTipo.textContent = tipo;
+
+  // Quitar clase de animación después
+  setTimeout(() => currentText.classList.remove("appear"), 600);
+}
+
+function showPrevious(text, cita) {
+  previousText.textContent = text  || "";
+  previousCita.textContent = cita  || "";
+}
+
+// ── Fullscreen ───────────────────────────────────
+document.addEventListener("keydown", e => {
+  if (e.key === "f" || e.key === "F") {
+    if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+    else document.exitFullscreen();
+  }
+});
+document.addEventListener("dblclick", () => {
+  if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+  else document.exitFullscreen();
+});
+</script>
+</body>
+</html>
