@@ -111,6 +111,30 @@
     transition: opacity 0.4s;
   }
 
+  .song-info {
+    margin-top: 18px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .song-title {
+    font-family: 'Cormorant SC', serif;
+    font-size: clamp(11px, 1.2vw, 18px);
+    font-weight: 500;
+    color: rgba(242,237,227,0.45);
+    letter-spacing: 2px;
+  }
+
+  .song-artist {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(10px, 1vw, 15px);
+    font-style: italic;
+    color: rgba(242,237,227,0.25);
+    letter-spacing: 1px;
+  }
+
   /* Acento lateral — aparece cuando hay contenido */
   .panel-current::before {
     content: '';
@@ -206,13 +230,17 @@
     <div class="current-tipo" id="currentTipo"></div>
     <div class="current-text empty" id="currentText">— sin señal —</div>
     <div class="current-cita" id="currentCita"></div>
+    <div class="song-info" id="songInfo" style="display:none;">
+      <div class="song-title" id="songTitle"></div>
+      <div class="song-artist" id="songArtist"></div>
+    </div>
   </div>
 
   <div class="panel-divider"></div>
 
-  <!-- Slide anterior -->
+  <!-- Slide siguiente -->
   <div class="panel panel-previous">
-    <div class="previous-label">Anterior</div>
+    <div class="previous-label">Siguiente</div>
     <div class="previous-text" id="previousText"></div>
     <div class="previous-cita" id="previousCita"></div>
   </div>
@@ -248,6 +276,9 @@ const panel        = document.getElementById("panelCurrent");
 const currentText  = document.getElementById("currentText");
 const currentCita  = document.getElementById("currentCita");
 const currentTipo  = document.getElementById("currentTipo");
+const songInfo     = document.getElementById("songInfo");
+const songTitle    = document.getElementById("songTitle");
+const songArtist   = document.getElementById("songArtist");
 const previousText = document.getElementById("previousText");
 const previousCita = document.getElementById("previousCita");
 
@@ -259,37 +290,41 @@ onValue(ref(db, "/holyrics/live"), (snap) => {
     d.tipo      || "",
     d.versiculo || "",
     d.cita      || "",
-    !!d.activo
+    !!d.activo,
+    d.titulo    || "",
+    d.artista   || "",
+    d.siguiente || ""
   );
 });
 
-function render(texto, tipo, versiculo, cita, activo) {
-  // Determinar display principal
+function render(texto, tipo, versiculo, cita, activo, titulo, artista, siguiente) {
   const display     = (tipo === "BIBLE" && versiculo) ? versiculo : texto;
   const displayCita = (tipo === "BIBLE") ? cita : "";
 
-  // Dot
   dot.className = activo ? "dot live" : "dot";
 
   if (!activo || !texto) {
-    // Sin señal
     panel.classList.remove("live");
     currentText.textContent = "— sin señal —";
     currentText.className   = "current-text empty";
     currentCita.textContent = "";
     currentTipo.textContent = "";
+    songInfo.style.display  = "none";
     return;
   }
 
-  // ¿Cambió el texto? → mover actual a anterior
   const currentRaw = currentText.getAttribute("data-raw") || "";
   if (display !== currentRaw && currentRaw) {
     prevText = currentRaw;
     prevCita = currentCita.textContent;
+  }
+  // Mostrar slide siguiente si viene de Firebase, sino mostrar anterior
+  if (siguiente) {
+    showPrevious(siguiente, "");
+  } else if (display !== currentRaw && currentRaw) {
     showPrevious(prevText, prevCita);
   }
 
-  // Actualizar actual
   panel.classList.add("live");
   currentText.setAttribute("data-raw", display);
   currentText.className   = "current-text appear";
@@ -297,7 +332,14 @@ function render(texto, tipo, versiculo, cita, activo) {
   currentCita.textContent = displayCita;
   currentTipo.textContent = tipo;
 
-  // Quitar clase de animación después
+  if (tipo === "MUSIC" && titulo) {
+    songTitle.textContent  = titulo;
+    songArtist.textContent = artista || "";
+    songInfo.style.display = "flex";
+  } else {
+    songInfo.style.display = "none";
+  }
+
   setTimeout(() => currentText.classList.remove("appear"), 600);
 }
 
